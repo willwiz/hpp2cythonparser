@@ -1,8 +1,8 @@
 import enum
 import dataclasses as dc
 import textwrap
-from hpp2cythonparser.internals.tools import get_context, Braces
-from hpp2cythonparser.internals.ctypes import (
+from tools import get_context, Braces
+from c_types import (
     c_constructor,
     c_types,
     c_types_extended,

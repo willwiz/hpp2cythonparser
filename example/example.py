@@ -1,7 +1,7 @@
 import os
 from glob import glob
 from contextlib import contextmanager
-from hpp2cythonparser.hpp_parser import create_cython_header
+from hpp_parser import create_cython_header
 
 
 @contextmanager

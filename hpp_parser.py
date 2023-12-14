@@ -1,10 +1,10 @@
 import os
 import dataclasses as dc
 import sys
-from hpp2cythonparser.internals.tools import remove_comment, filterline, read_cppfile
-from hpp2cythonparser.internals.data_types import CPPVar, CPPFunction, CPPClass
-import hpp2cythonparser.internals.print_headers as hp
-from hpp2cythonparser.internals.core import (
+from internals.tools import remove_comment, filterline, read_cppfile
+from internals.data_types import CPPVar, CPPFunction, CPPClass
+from internals import print_headers as hp
+from internals.core import (
     find_includes_from_file,
     get_namespace_from_code,
     get_item_from_code,

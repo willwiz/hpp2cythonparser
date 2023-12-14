@@ -1,12 +1,12 @@
 import os
 import re
-from hpp2cythonparser.internals.tools import (
+from tools import (
     Braces,
     read_cppfile,
     get_context,
     check_for_semicolon,
 )
-from hpp2cythonparser.internals.ctypes import (
+from c_types import (
     c_generic,
     c_int,
     c_double,
@@ -16,7 +16,7 @@ from hpp2cythonparser.internals.ctypes import (
     c_constructor,
     c_types,
 )
-from hpp2cythonparser.internals.data_types import (
+from data_types import (
     CPPObject,
     CPPVar,
     CPPFunction,
