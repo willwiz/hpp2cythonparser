@@ -1,8 +1,8 @@
 import enum
 import dataclasses as dc
 import textwrap
-from tools import get_context, Braces
-from c_types import (
+from .tools import get_context, Braces
+from .c_types import (
     c_constructor,
     c_types,
     c_types_extended,
@@ -66,7 +66,7 @@ class CPPFunction:
         if not subelem:
             string = "cdef " + string
         if isinstance(self.kind, c_constructor):
-            string = string + " except +"
+            string = string + "$except$+"
         return "\n".join(wrapper.wrap(text=string)).replace("$", " ")
 
 

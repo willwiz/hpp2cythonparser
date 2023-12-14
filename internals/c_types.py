@@ -64,7 +64,8 @@ class c_ptr:
     kind: c_void | c_int | c_double | c_generic | c_generic_t | Self = dc.field(
         default_factory=c_void
     )
-    char: Literal["[]", "*"] = "*"
+    # char: Literal["[]", "*", "[:,:]", "[:,:,:]"] = "*"
+    char: str = "*"
 
     def to_str(self):
         return f"{self.kind.to_str()}{self.char}"

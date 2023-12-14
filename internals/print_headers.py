@@ -33,13 +33,13 @@ def print_headers_guard():
 
 
 def print_cppsrc(src: str):
-    return f"""\
-cdef extern from "{src}":
+    return f"""
+cdef extern from r"{src}":
   pass
 """
 
 
 def print_hppsrc_header(src: str, namespace: str | None = None):
     if namespace is None:
-        return f'cdef extern from "{src}":'
-    return f'cdef extern from "{src}" namespace "{namespace}":\n'
+        return f'cdef extern from r"{src}":'
+    return f'cdef extern from r"{src}" namespace "{namespace}":\n'

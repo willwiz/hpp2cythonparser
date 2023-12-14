@@ -1,12 +1,12 @@
 import os
 import re
-from tools import (
+from .tools import (
     Braces,
     read_cppfile,
     get_context,
     check_for_semicolon,
 )
-from c_types import (
+from .c_types import (
     c_generic,
     c_int,
     c_double,
@@ -16,7 +16,7 @@ from c_types import (
     c_constructor,
     c_types,
 )
-from data_types import (
+from .data_types import (
     CPPObject,
     CPPVar,
     CPPFunction,
@@ -75,9 +75,9 @@ def get_variable_instance(code: str) -> tuple[CPPVar, str | None]:
     array_depth = [v.count("]") for v in vs]
     if array_depth.count(array_depth[0]) != len(array_depth):
         raise ValueError(f"Vars do not have the same type, {vs=}")
-    for _ in range(array_depth[0]):
-        kind = c_ptr(kind, "[]")
-    v_list = [v.split("[")[0] for v in vs]
+    kind = c_ptr(kind, f"[{','.join([':' for _ in range(array_depth[0])])}]")
+    v_list = [v.split("=")[0] for v in vs]
+    v_list = [v.split("[")[0] for v in v_list]
     rest = check_for_semicolon(rest)
     if rest:
         return CPPVar(kind, ", ".join(v_list)), rest
@@ -182,11 +182,11 @@ def get_class_instance(code: str) -> tuple[CPPClass, str | None]:
 
 def get_typedef_instance(code: str) -> tuple[None, str | None]:
     first = code.find(";")
-    return None, code[first + 1 :]
+    return None, code[first + 1 :].strip()
 
 
 def get_inline_instance(code: str) -> tuple[None, str | None]:
-    _, rest = code.split(None, 2)
+    _, rest = code.split(None, 1)
     _, tail = get_item_from_code(rest)
     return None, tail
 
@@ -195,7 +195,9 @@ def get_template_instance(code: str) -> tuple[None, str | None]:
     match get_context(code, Braces.angle):
         case (_, _, rest):
             _, tail = get_item_from_code(rest)
-            return None, tail
+            if tail is None:
+                return None, None
+            return None, check_for_semicolon(tail)
         case None:
             raise ValueError(f"Cannot found template parameter part for template.")
 
@@ -216,7 +218,6 @@ def valid_function_arg(v_type: c_types) -> bool:
 
 
 def function_arg_check(fn: CPPFunction) -> CPPFunction | None:
-    print(fn)
     for v in fn.content:
         if not valid_function_arg(v.kind):
             return None
@@ -244,5 +245,8 @@ def get_item_from_code(
             return get_typedef_instance(code)
         case CPPObject.template:
             return get_template_instance(code)
+        case CPPObject.inline:
+            return get_inline_instance(code)
         case _:
+            print(code)
             raise ValueError("To Be implemented")

@@ -1,10 +1,10 @@
 import os
 import dataclasses as dc
 import sys
-from internals.tools import remove_comment, filterline, read_cppfile
-from internals.data_types import CPPVar, CPPFunction, CPPClass
-from internals import print_headers as hp
-from internals.core import (
+from .internals.tools import remove_comment, filterline, read_cppfile
+from .internals.data_types import CPPVar, CPPFunction, CPPClass
+from .internals import print_headers as hp
+from .internals.core import (
     find_includes_from_file,
     get_namespace_from_code,
     get_item_from_code,
@@ -44,7 +44,7 @@ def parse_cppheader_code(code: str) -> list[CPPVar | CPPFunction | CPPClass]:
         item, rest = get_item_from_code(rest)
         if item is not None:
             content.append(item)
-        print(f"{content=}")
+        # print(f"{content=}")
     return content
 
 
@@ -76,11 +76,12 @@ def export_cython_header(
 
 def create_cython_header(
     file_name: str,
-    show_content: bool = True,
     cpp_home: str | None = None,
     cython_home: str | None = None,
+    show_content: bool = True,
 ) -> None:
     inp = get_input_info(file_name, cpp_home, cython_home)
+    print(f"{inp.hpp_file=}")
     print(f"{inp.cython_file=}")
     includes_cpp = (
         find_includes_from_file(inp.cpp_file, inp.handle + ".hpp", inp.cython_folder)
