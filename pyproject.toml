@@ -23,7 +23,7 @@ classifiers = [
 dependencies = []
 
 [project.scripts]
-hpp2cython = "hpp2cythonparser.cppheaderparser:main"
+hpp2cython = "hpp2cythonparser.hpp_parser:main"
 
 [project.urls]
 homepage = "https://example.com"
