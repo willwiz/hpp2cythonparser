@@ -1,5 +1,5 @@
 import dataclasses as dc
-from typing import Final, Literal, Self, TypeAlias
+from typing import Final, Self, TypeAlias
 
 
 @dc.dataclass(slots=True)

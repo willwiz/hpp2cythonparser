@@ -5,7 +5,7 @@ from hpp_parser import create_cython_header
 
 
 @contextmanager
-def cwd(path):
+def cwd(path: str):
     oldpwd = os.getcwd()
     os.chdir(path)
     try:
@@ -18,7 +18,7 @@ _CPP_HOME: str = os.sep.join(["src", "cpp"])
 _CYTHON_HOME: str = os.sep.join(["src", "cython", "headers"])
 
 
-def main(cpp_home: str | None = None, cython_home: str | None = None):
+def main(cpp_home: str, cython_home: str):
     with cwd(os.path.dirname(__file__)):
         files = glob("src/cpp/*/*.hpp")
         for fin in files:

@@ -39,7 +39,7 @@ class CPPVar:
     kind: c_types
     name: str
 
-    def to_string(self, subelem=False):
+    def to_string(self, subelem: bool = False):
         if subelem:
             return f"  {self.kind.to_str()} {self.name}"
         else:
@@ -52,7 +52,7 @@ class CPPFunction:
     name: str
     content: list[CPPVar] = dc.field(default_factory=list)
 
-    def to_string(self, subelem=False):
+    def to_string(self, subelem: bool = False):
         wrapper = textwrap.TextWrapper(
             width=80,
             initial_indent="  ",

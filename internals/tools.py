@@ -70,7 +70,7 @@ def remove_comment(file: list[str]) -> str:
     raw = " ".join(file)
     while True:
         match get_context(raw, Braces.comment):
-            case (head, comment, tail):
+            case str(head), str(), str(tail):
                 raw = " ".join([head, tail])
             case None:
                 break

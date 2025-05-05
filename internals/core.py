@@ -59,13 +59,12 @@ def get_namespace_from_code(code: str) -> tuple[str | None, str]:
         )
     elif n_namespace == 1:
         start = raw_code.find("namespace")
-        namespace, rest = raw_code[start + 9:].split(None, 1)
+        namespace, rest = raw_code[start + 9 :].split(None, 1)
         match get_context(rest, Braces.curly):
-            case (head, raw, tail):
+            case str(), str(raw), str():
                 return namespace, raw.strip()
             case None:
-                raise ValueError(
-                    f"Cannot find context for namespace {namespace}")
+                raise ValueError(f"Cannot find context for namespace {namespace}")
     return None, raw_code
 
 
@@ -77,9 +76,7 @@ def get_variable_instance(code: str) -> tuple[CPPVar, str | None]:
     if array_depth.count(array_depth[0]) != len(array_depth):
         raise ValueError(f"Vars do not have the same type, {vs=}")
     if array_depth[0] > 0:
-        kind = c_ptr(
-            kind, f"[{','.join([':' for _ in range(array_depth[0])])}]"
-        )
+        kind = c_ptr(kind, f"[{','.join([':' for _ in range(array_depth[0])])}]")
     v_list = [v.split("=")[0] for v in vs]
     v_list = [v.split("[")[0] for v in v_list]
     rest = check_for_semicolon(rest)
@@ -107,7 +104,7 @@ def find_function_ending(code: str) -> str:
     matched_obj = function_seperator.search(code)
     if matched_obj is None:
         raise ValueError("Could not find the end of function")
-    return code[matched_obj.end():].strip()
+    return code[matched_obj.end() :].strip()
 
 
 def get_function_instance(code: str) -> tuple[CPPFunction, str | None]:
@@ -153,9 +150,9 @@ def get_classmembers_public(code: str) -> str | None:
     start = code.find("public")
     if start < 0:
         return None
-    rest = code[start + 6:].strip()
+    rest = code[start + 6 :].strip()
     start = rest.find(":")
-    rest = rest[start + 1:].strip()
+    rest = rest[start + 1 :].strip()
     end = rest.find("private")
     if end > 0:
         return rest[:end]
@@ -186,7 +183,7 @@ def get_class_instance(code: str) -> tuple[CPPClass, str | None]:
 
 def get_typedef_instance(code: str) -> tuple[None, str | None]:
     first = code.find(";")
-    return None, code[first + 1:].strip()
+    return None, code[first + 1 :].strip()
 
 
 def get_inline_instance(code: str) -> tuple[None, str | None]:
@@ -203,8 +200,7 @@ def get_template_instance(code: str) -> tuple[None, str | None]:
                 return None, None
             return None, check_for_semicolon(tail)
         case None:
-            raise ValueError(
-                f"Cannot found template parameter part for template.")
+            raise ValueError(f"Cannot found template parameter part for template.")
 
 
 def valid_function_arg(v_type: c_types) -> bool:
@@ -214,8 +210,7 @@ def valid_function_arg(v_type: c_types) -> bool:
         case c_void() | c_int() | c_double() | c_generic():
             pass
         case c_generic_t():
-            print(
-                f">>>>WARNING: template function args not implemented, {v_type=}")
+            print(f">>>>WARNING: template function args not implemented, {v_type=}")
             return False
         case _:
             print(f">>>>WARNING: inadmissible type {v_type}, ignored")

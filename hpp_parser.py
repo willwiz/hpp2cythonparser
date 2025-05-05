@@ -83,7 +83,7 @@ def create_cython_header(
     inp = get_input_info(file_name, cpp_home, cython_home)
     print(f"{inp.hpp_file=}")
     print(f"{inp.cython_file=}")
-    includes_cpp = (
+    includes_cpp: list[str] = (
         find_includes_from_file(inp.cpp_file, inp.handle + ".hpp", inp.cython_folder)
         if os.path.isfile(inp.cpp_file)
         else list()
