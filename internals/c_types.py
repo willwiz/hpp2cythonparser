@@ -1,78 +1,97 @@
+# ruff: noqa: N801
+__all__ = [
+    "Ctype",
+    "CtypeExtended",
+    "c_constructor",
+    "c_destructor",
+    "c_double",
+    "c_generic",
+    "c_generic_t",
+    "c_int",
+    "c_ptr",
+    "c_void",
+]
+import abc
 import dataclasses as dc
-from typing import Final, Self, TypeAlias
+from typing import Final
+
+
+class CtypeExtended(abc.ABC):
+    @abc.abstractmethod
+    def __str__(self) -> str:
+        """Convert the C type to a string representation."""
+
+
+class Ctype(CtypeExtended):
+    @abc.abstractmethod
+    def __str__(self) -> str:
+        """Convert the C type to a string representation."""
 
 
 @dc.dataclass(slots=True)
-class c_void:
+class c_void(Ctype):
     val: Final[str] = "void"
 
-    def to_str(self):
+    def __str__(self) -> str:
         return self.val
 
 
 @dc.dataclass(slots=True)
-class c_int:
+class c_int(Ctype):
     val: Final[str] = "int"
 
-    def to_str(self):
+    def __str__(self) -> str:
         return self.val
 
 
 @dc.dataclass(slots=True)
-class c_double:
+class c_double(Ctype):
     val: Final[str] = "double"
 
-    def to_str(self):
+    def __str__(self) -> str:
         return self.val
 
 
 @dc.dataclass(slots=True)
-class c_generic:
+class c_generic(Ctype):
     val: Final[str]
 
-    def to_str(self):
+    def __str__(self) -> str:
         return self.val
 
 
 @dc.dataclass(slots=True)
-class c_generic_t:
+class c_generic_t(Ctype):
     val: Final[str]
     args: Final[list[str]]
 
-    def to_str(self):
+    def __str__(self) -> str:
         return f"{self.val}[{', '.join(self.args)}]"
 
 
 @dc.dataclass(slots=True)
-class c_constructor:
-    val: Final[str] = ""
-
-    def to_str(self):
-        return self.val
-
-
-@dc.dataclass(slots=True)
-class c_destructor:
-    val: Final[str] = "~"
-
-    def to_str(self):
-        return self.val
-
-
-@dc.dataclass(slots=True)
-class c_ptr:
-    kind: c_void | c_int | c_double | c_generic | c_generic_t | Self = dc.field(
-        default_factory=c_void
+class c_ptr(Ctype):
+    kind: Ctype = dc.field(
+        default_factory=c_void,
     )
     # char: Literal["[]", "*", "[:,:]", "[:,:,:]"] = "*"
     char: str = "*"
 
-    def to_str(self):
-        return f"{self.kind.to_str()}{self.char}"
+    def __str__(self) -> str:
+        return f"{self.kind}{self.char}"
 
 
-c_types: TypeAlias = c_void | c_int | c_double | c_generic | c_generic_t | c_ptr
+@dc.dataclass(slots=True)
+class c_constructor(CtypeExtended):
+    val: Final[str] = ""
 
-c_types_extended: TypeAlias = (
-    c_void | c_int | c_double | c_generic | c_generic_t | c_ptr | c_constructor
-)
+    def __str__(self) -> str:
+        return self.val
+
+
+@dc.dataclass(slots=True)
+class c_destructor(CtypeExtended):
+    val: Final[str] = "~"
+
+    def __str__(self) -> str:
+        return self.val

@@ -1,45 +1,49 @@
-import os
+from __future__ import annotations
+
 import dataclasses as dc
 import sys
-from .internals.tools import remove_comment, filterline, read_cppfile
-from .internals.data_types import CPPVar, CPPFunction, CPPClass
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 from .internals import print_headers as hp
 from .internals.core import (
     find_includes_from_file,
-    get_namespace_from_code,
     get_item_from_code,
+    get_namespace_from_code,
 )
+from .internals.tools import filterline, read_cppfile, remove_comment
+
+if TYPE_CHECKING:
+    from .internals.data_types import CPPClass, CPPFunction, CPPVar
 
 
 @dc.dataclass(slots=True)
 class InputInfo:
-    handle: str
-    hpp_file: str
-    cpp_file: str
-    cython_file: str
-    cython_folder: str
+    hpp_file: Path
+    cpp_file: Path
+    cython_file: Path
+    cython_folder: Path
 
 
 def get_input_info(
     file_name: str,
-    cpp_home: str | None = None,
-    cython_home: str | None = None,
+    cpp_home: Path | str | None = None,
+    cython_home: Path | str | None = None,
 ) -> InputInfo:
-    hpp_file = os.path.normpath(file_name)
-    folder, name = os.path.split(hpp_file)
-    handle, _ = os.path.splitext(name)
-    if cpp_home and cython_home:
-        cython_folder = folder.replace(cpp_home, cython_home)
-    else:
-        cython_folder = "."
-    cpp_file = hpp_file.replace(".hpp", ".cpp")
-    cython_file = os.path.join(cython_folder, handle + ".pxd")
-    return InputInfo(handle, hpp_file, cpp_file, cython_file, cython_folder)
+    hpp_file = Path(file_name)
+    cython_folder = (
+        Path(cython_home) / hpp_file.parent.relative_to(cpp_home)
+        if cpp_home and cython_home
+        else Path()
+    )
+    cpp_file = hpp_file.with_suffix(".cpp")
+    cython_file = cython_folder / hpp_file.with_suffix(".pxd")
+    return InputInfo(hpp_file, cpp_file, cython_file, cython_folder)
 
 
 def parse_cppheader_code(code: str) -> list[CPPVar | CPPFunction | CPPClass]:
     rest = code
-    content: list[CPPVar | CPPFunction | CPPClass] = list()
+    content: list[CPPVar | CPPFunction | CPPClass] = []
     while rest:
         item, rest = get_item_from_code(rest)
         if item is not None:
@@ -53,22 +57,23 @@ def export_cython_header(
     includes: list[str],
     namespace: str | None,
     content: list[CPPVar | CPPFunction | CPPClass],
+    *,
     show_content: bool,
 ) -> None:
-    os.makedirs(os.path.dirname(inp.cython_file), exist_ok=True)
-    with open(inp.cython_file, "w") as fout:
-        fout.write(hp.print_header(inp.handle))
+    inp.cython_file.parent.mkdir(parents=True, exist_ok=True)
+    with inp.cython_file.open("w") as fout:
+        fout.write(hp.print_header(inp.hpp_file.stem))
         for s in includes:
             fout.write(f"cimport {s}\n")
         fout.write("\n")
-        if os.path.isfile(inp.cpp_file):
+        if inp.cpp_file.is_file():
             fout.write(hp.print_cppsrc(inp.cpp_file))
         fout.write(hp.print_end_src())
         fout.write(hp.print_headers_guard())
         fout.write(hp.print_hppsrc_header(inp.hpp_file, namespace))
         if show_content and (content != []):
             for c in content:
-                fout.write(c.to_string())
+                fout.write(str(c))
                 fout.write("\n\n")
         else:
             fout.write("  pass")
@@ -76,31 +81,34 @@ def export_cython_header(
 
 def create_cython_header(
     file_name: str,
-    cpp_home: str | None = None,
-    cython_home: str | None = None,
+    cpp_home: Path | str | None = None,
+    cython_home: Path | str | None = None,
+    *,
     show_content: bool = True,
 ) -> None:
     inp = get_input_info(file_name, cpp_home, cython_home)
     print(f"{inp.hpp_file=}")
     print(f"{inp.cython_file=}")
     includes_cpp: list[str] = (
-        find_includes_from_file(inp.cpp_file, inp.handle + ".hpp", inp.cython_folder)
-        if os.path.isfile(inp.cpp_file)
-        else list()
+        find_includes_from_file(inp.cpp_file, inp.hpp_file.name, inp.cython_folder)
+        if inp.cpp_file.is_file()
+        else []
     )
     includes_hpp = find_includes_from_file(
-        inp.hpp_file, inp.handle + ".hpp", inp.cython_folder
+        inp.hpp_file,
+        inp.hpp_file.name,
+        inp.cython_folder,
     )
-    includes = sorted(list(set(includes_cpp + includes_hpp)))
+    includes = sorted(set(includes_cpp + includes_hpp))
 
     namespace, code = get_namespace_from_code(
-        remove_comment(filterline(read_cppfile(inp.hpp_file), "#include"))
+        remove_comment(filterline(read_cppfile(inp.hpp_file), "#include")),
     )
     content = parse_cppheader_code(code)
     print(f"{includes=}")
     print(f"{namespace=}")
     print([s.name for s in content], "\n")
-    export_cython_header(inp, includes, namespace, content, show_content)
+    export_cython_header(inp, includes, namespace, content, show_content=show_content)
 
 
 if __name__ == "__main__":

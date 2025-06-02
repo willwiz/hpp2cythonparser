@@ -1,51 +1,55 @@
+from __future__ import annotations
+
 import os
 import re
-from .tools import (
-    Braces,
-    read_cppfile,
-    get_context,
-    check_for_semicolon,
-)
+from pathlib import Path
+
 from .c_types import (
-    c_generic,
-    c_int,
+    Ctype,
+    c_constructor,
     c_double,
+    c_generic,
     c_generic_t,
+    c_int,
     c_ptr,
     c_void,
-    c_constructor,
-    c_types,
 )
 from .data_types import (
+    CPPClass,
+    CPPFunction,
     CPPObject,
     CPPVar,
-    CPPFunction,
-    CPPClass,
     check_next_type,
     get_variable_type,
 )
+from .tools import (
+    Braces,
+    check_for_semicolon,
+    get_context,
+    read_cppfile,
+)
+
+_INCLUDE_SIZE = 2
 
 
-def parse_include(code: str, exclude: str, folder: str) -> str | None:
-    splitted_code = code.split()
-    if len(splitted_code) != 2:
-        raise ValueError(f"Improper header line: {code}")
-    _, header = splitted_code
-    if header.startswith('"') and header.endswith('"'):
-        _, string = os.path.split(header.replace('"', "").strip())
-        if string != exclude:
-            string = os.path.join(folder, header.replace('"', ""))
-            string, _ = os.path.splitext(os.path.normpath(string))
-            return ".".join(string.split(os.sep))
-    return None
+def parse_include(code: str, exclude: str, folder: Path | str) -> str | None:
+    splitted_code = code.strip().split()
+    if len(splitted_code) != _INCLUDE_SIZE:
+        msg = f">>>ERROR: improper header line: {code}"
+        raise ValueError(msg)
+    _, string = splitted_code
+    if not (string.startswith('"') and string.endswith('"')):
+        return None
+    _, header = os.path.split(string.replace('"', "").strip())
+    if header == exclude:
+        return None
+    return ".".join((Path(folder) / os.path.normpath(string)).with_suffix("").parts)
 
 
-def find_includes_from_file(name: str, header: str, folder: str) -> list[str]:
+def find_includes_from_file(name: Path | str, header: str, folder: Path | str) -> list[str]:
     code = read_cppfile(name)
     header_lines = [
-        parse_include(line, header, folder)
-        for line in code
-        if line.startswith("#include")
+        parse_include(line, header, folder) for line in code if line.startswith("#include")
     ]
     return [line for line in header_lines if line]
 
@@ -54,88 +58,97 @@ def get_namespace_from_code(code: str) -> tuple[str | None, str]:
     raw_code = code
     n_namespace = raw_code.count("namespace")
     if n_namespace > 1:
-        raise ValueError(
-            "This code currently only works with up to one namespace per file"
-        )
-    elif n_namespace == 1:
+        msg = f">>>ERROR: found {n_namespace} namespaces in code, expected 1"
+        raise ValueError(msg)
+    if n_namespace == 1:
         start = raw_code.find("namespace")
         namespace, rest = raw_code[start + 9 :].split(None, 1)
         match get_context(rest, Braces.curly):
             case str(), str(raw), str():
                 return namespace, raw.strip()
             case None:
-                raise ValueError(f"Cannot find context for namespace {namespace}")
+                msg = f">>>ERROR: cannot find context for namespace {namespace}"
+                raise ValueError(msg)
     return None, raw_code
 
 
-def get_variable_instance(code: str) -> tuple[CPPVar, str | None]:
+def get_variable_instance(code: str, *, nested: bool = False) -> tuple[CPPVar, str | None]:
     kind, rest = get_variable_type(code)
     vs, rest = [s.strip() for s in rest.split(";", 1)]
     vs = [v.strip() for v in vs.split(",")]
     array_depth = [v.count("]") for v in vs]
     if array_depth.count(array_depth[0]) != len(array_depth):
-        raise ValueError(f"Vars do not have the same type, {vs=}")
+        msg = f">>>ERROR: vars do not have the same array depth, {vs=}"
+        raise ValueError(msg)
     if array_depth[0] > 0:
         kind = c_ptr(kind, f"[{','.join([':' for _ in range(array_depth[0])])}]")
     v_list = [v.split("=")[0] for v in vs]
     v_list = [v.split("[")[0] for v in v_list]
     rest = check_for_semicolon(rest)
     if rest:
-        return CPPVar(kind, ", ".join(v_list)), rest
-    return CPPVar(kind, ", ".join(v_list)), None
+        return CPPVar(kind, ", ".join(v_list), nested), rest
+    return CPPVar(kind, ", ".join(v_list), nested), None
 
 
-def format_function_argvar(code: str) -> CPPVar:
+def format_function_argvar(code: str, *, subelem: bool) -> CPPVar:
     kind, rest = get_variable_type(code)
     array_depth = rest.count("[")
     for _ in range(array_depth):
         kind = c_ptr(kind, "[]")
     name = rest.split("[")[0]
-    return CPPVar(kind, name)
+    return CPPVar(kind, name, subelem)
 
 
-def split_function_arguments(code: str) -> list[CPPVar]:
+def split_function_arguments(code: str, *, subelem: bool = False) -> list[CPPVar]:
     vs = [v.strip() for v in code.split(",")]
-    return [format_function_argvar(v) for v in vs]
+    return [format_function_argvar(v, subelem=subelem) for v in vs]
 
 
 def find_function_ending(code: str) -> str:
     function_seperator = re.compile(r";|{};|{}|{\s+};|{\s+}")
     matched_obj = function_seperator.search(code)
     if matched_obj is None:
-        raise ValueError("Could not find the end of function")
+        msg = f">>>ERROR: cannot find function ending in code: {code}"
+        raise ValueError(msg)
     return code[matched_obj.end() :].strip()
 
 
-def get_function_instance(code: str) -> tuple[CPPFunction, str | None]:
+def get_function_instance(code: str, *, nested: bool = False) -> tuple[CPPFunction, str | None]:
     kind, rest = get_variable_type(code)
     match get_context(rest, Braces.round):
         case (name, context, tail):
-            fn = CPPFunction(kind, name)
+            fn = CPPFunction(kind, name, _subelem=nested)
             if context:
-                vs = split_function_arguments(context)
+                vs = split_function_arguments(context, subelem=True)
                 fn.content.extend(vs)
             return (fn, find_function_ending(tail))
         case None:
-            raise ValueError(f"Function cannot find context in {code}")
+            msg = f">>>ERROR: function {code} does not have context braces"
+            raise ValueError(msg)
 
 
 def get_constructor(
-    code: str, class_name: str | None
+    code: str,
+    class_name: str | None,
+    *,
+    nested: bool = False,
 ) -> tuple[CPPFunction, str | None]:
     match get_context(code, Braces.round):
         case (name, context, tail):
             if class_name is None:
-                raise ValueError(f"Getting constructor but class name is None")
+                msg = f">>>ERROR: getting constructor but class name is None, {code=}"
+                raise ValueError(msg)
             if class_name != name:
-                raise ValueError(f"class {class_name} != {name}")
-            fn = CPPFunction(c_constructor(), class_name)
+                msg = f">>>ERROR: class name {class_name} does not match function name {name}"
+                raise ValueError(msg)
+            fn = CPPFunction(c_constructor(), class_name, _subelem=nested)
             if context:
-                vs = split_function_arguments(context)
+                vs = split_function_arguments(context, subelem=True)
                 fn.content.extend(vs)
             return fn, find_function_ending(tail)
         case None:
-            raise ValueError(f"Function cannot find context in {code}")
+            msg = f">>>ERROR: constructor {code} does not have call braces"
+            raise ValueError(msg)
 
 
 def get_destructor(code: str) -> tuple[None, str | None]:
@@ -143,7 +156,8 @@ def get_destructor(code: str) -> tuple[None, str | None]:
         case (_, _, tail):
             return None, find_function_ending(tail)
         case None:
-            raise ValueError(f"Destruction is without call braces")
+            msg = f">>>ERROR: destructor code does not have call braces: {code}"
+            raise ValueError(msg)
 
 
 def get_classmembers_public(code: str) -> str | None:
@@ -167,12 +181,13 @@ def get_class_instance(code: str) -> tuple[CPPClass, str | None]:
     name = name.split(":")[0]
     content = get_context(rest, Braces.curly)
     if content is None:
-        raise ValueError(f"Cannot find context for class {name}")
+        msg = f">>>ERROR: cannot find context for class {name} in code: {code}"
+        raise ValueError(msg)
     item = CPPClass(name)
     _, context, tail = content
     context = get_classmembers_public(context)
     while context:
-        members, context = get_item_from_code(context, name)
+        members, context = get_item_from_code(context, name, nested=True)
         if isinstance(members, CPPVar | CPPFunction):
             item.content.append(members)
     tail = check_for_semicolon(tail)
@@ -200,10 +215,11 @@ def get_template_instance(code: str) -> tuple[None, str | None]:
                 return None, None
             return None, check_for_semicolon(tail)
         case None:
-            raise ValueError(f"Cannot found template parameter part for template.")
+            msg = f">>>ERROR: template code does not have angle braces: {code}"
+            raise ValueError(msg)
 
 
-def valid_function_arg(v_type: c_types) -> bool:
+def valid_function_arg(v_type: Ctype) -> bool:
     match v_type:
         case c_ptr():
             valid_function_arg(v_type.kind)
@@ -226,28 +242,32 @@ def function_arg_check(fn: CPPFunction) -> CPPFunction | None:
 
 
 def get_item_from_code(
-    code: str, class_name: str | None = None
+    code: str,
+    class_name: str | None = None,
+    *,
+    nested: bool = False,
 ) -> tuple[CPPVar | CPPFunction | CPPClass | None, str | None]:
     kind = check_next_type(code, class_name)
     match kind:
         case CPPObject.cls:
-            return get_class_instance(code)
+            kind, rest = get_class_instance(code)
         case CPPObject.var:
-            return get_variable_instance(code)
+            kind, rest = get_variable_instance(code, nested=nested)
         case CPPObject.func:
-            member, rest = get_function_instance(code)
-            return function_arg_check(member), rest
+            member, rest = get_function_instance(code, nested=nested)
+            kind = function_arg_check(member)
         case CPPObject.constructor:
-            member, rest = get_constructor(code, class_name)
-            return function_arg_check(member), rest
+            member, rest = get_constructor(code, class_name, nested=nested)
+            kind = function_arg_check(member)
         case CPPObject.destructor:
-            return get_destructor(code)
+            kind, rest = get_destructor(code)
         case CPPObject.typedef:
-            return get_typedef_instance(code)
+            kind, rest = get_typedef_instance(code)
         case CPPObject.template:
-            return get_template_instance(code)
+            kind, rest = get_template_instance(code)
         case CPPObject.inline:
-            return get_inline_instance(code)
+            kind, rest = get_inline_instance(code)
         case _:
             print(code)
-            raise ValueError("To Be implemented")
+            raise NotImplementedError
+    return kind, rest

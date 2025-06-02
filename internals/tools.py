@@ -1,5 +1,7 @@
-import os
+from __future__ import annotations
+
 import enum
+from pathlib import Path
 from typing import Literal
 
 
@@ -41,7 +43,8 @@ def get_context(data: str, brace: Braces) -> tuple[str, str, str] | None:
         return None
     end = get_brace_count(data[start + 1 :], opening=left, closing=right)
     if end is None:
-        raise ValueError(f"End of context {right} not found in {data=}")
+        msg = f">>>ERROR: end of context {left} not found in {data=}"
+        raise ValueError(msg)
     return (
         data[:start].strip(),
         data[start + n : start + n + end].strip(),
@@ -49,17 +52,18 @@ def get_context(data: str, brace: Braces) -> tuple[str, str, str] | None:
     )
 
 
-def read_cppfile(name: str) -> list[str]:
-    if not os.path.isfile(name):
-        raise ValueError(f"Cannot find file {name}")
-    with open(name, "r") as fin:
+def read_cppfile(name: Path | str) -> list[str]:
+    name = Path(name)
+    if not name.is_file():
+        msg = f">>>ERROR: file {name} does not exist"
+        raise ValueError(msg)
+    with name.open("r") as fin:
         file = fin.read().split("\n")
     if file[0].startswith("#pragma"):
         file = file[1:]
     file = [line for line in file if not (line.startswith("#define"))]
     file = [line.split("//")[0].strip() for line in file]
-    file = [line for line in file if line]
-    return file
+    return [line for line in file if line]
 
 
 def filterline(code: list[str], word: str) -> list[str]:
@@ -71,7 +75,7 @@ def remove_comment(file: list[str]) -> str:
     while True:
         match get_context(raw, Braces.comment):
             case str(head), str(), str(tail):
-                raw = " ".join([head, tail])
+                raw = f"{head} {tail}"
             case None:
                 break
     return raw
