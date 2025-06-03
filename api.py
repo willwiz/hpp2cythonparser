@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+__all__ = [
+    "create_cython_header",
+]
+
 import dataclasses as dc
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -109,7 +112,3 @@ def create_cython_header(
     print(f"{namespace=}")
     print([s.name for s in content], "\n")
     export_cython_header(inp, includes, namespace, content, show_content=show_content)
-
-
-if __name__ == "__main__":
-    create_cython_header(sys.argv[1])
