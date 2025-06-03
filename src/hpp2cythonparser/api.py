@@ -40,7 +40,7 @@ def get_input_info(
         else Path()
     )
     cpp_file = hpp_file.with_suffix(".cpp")
-    cython_file = cython_folder / hpp_file.with_suffix(".pxd")
+    cython_file = cython_folder / hpp_file.with_suffix(".pxd").name
     return InputInfo(hpp_file, cpp_file, cython_file, cython_folder)
 
 
@@ -91,7 +91,9 @@ def create_cython_header(
 ) -> None:
     inp = get_input_info(file_name, cpp_home, cython_home)
     print(f"{inp.hpp_file=}")
+    print(f"{inp.cpp_file=}")
     print(f"{inp.cython_file=}")
+    print(f"{inp.cython_folder=}")
     includes_cpp: list[str] = (
         find_includes_from_file(inp.cpp_file, inp.hpp_file.name, inp.cython_folder)
         if inp.cpp_file.is_file()

@@ -94,7 +94,7 @@ class CPPClass:
     name: str
     content: list[CPPFunction | CPPVar] = dc.field(default_factory=list[CPPFunction | CPPVar])
 
-    def to_string(self) -> str:
+    def __str__(self) -> str:
         head = f"  cdef cppclass {self.name}:"
         string = ""
         if self.content:
@@ -136,7 +136,7 @@ def cstrip_prefix(
     """Strip the prefix from the code."""
     for p in prefix:
         if code.startswith(p):
-            return code[len(p) :].strip()
+            code = code[len(p) :].strip()
     return code
 
 

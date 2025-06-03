@@ -33,17 +33,18 @@ _INCLUDE_SIZE = 2
 
 
 def parse_include(code: str, exclude: str, folder: Path | str) -> str | None:
-    splitted_code = code.strip().split()
+    splitted_code = [s.strip() for s in code.strip().split()]
+    # print(f"{splitted_code=}")
     if len(splitted_code) != _INCLUDE_SIZE:
         msg = f">>>ERROR: improper header line: {code}"
         raise ValueError(msg)
     _, string = splitted_code
     if not (string.startswith('"') and string.endswith('"')):
         return None
-    _, header = os.path.split(string.replace('"', "").strip())
-    if header == exclude:
+    header = Path(string.replace('"', "").strip())
+    if header.name == exclude:
         return None
-    return ".".join((Path(folder) / os.path.normpath(string)).with_suffix("").parts)
+    return ".".join(Path(os.path.normpath(str((folder / header).with_suffix("")))).parts)
 
 
 def find_includes_from_file(name: Path | str, header: str, folder: Path | str) -> list[str]:
