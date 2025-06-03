@@ -26,7 +26,7 @@ class InputInfo:
 
 
 def get_input_info(
-    file_name: str,
+    file_name: Path | str,
     cpp_home: Path | str | None = None,
     cython_home: Path | str | None = None,
 ) -> InputInfo:
@@ -80,7 +80,7 @@ def export_cython_header(
 
 
 def create_cython_header(
-    file_name: str,
+    file_name: Path | str,
     cpp_home: Path | str | None = None,
     cython_home: Path | str | None = None,
     *,
