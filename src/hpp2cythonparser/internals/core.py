@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .c_types import (
     Ctype,
@@ -29,12 +30,14 @@ from .tools import (
     read_cppfile,
 )
 
+if TYPE_CHECKING:
+    from pytools.logging import ILogger
+
 _INCLUDE_SIZE = 2
 
 
 def parse_include(code: str, exclude: str, folder: Path | str) -> str | None:
     splitted_code = [s.strip() for s in code.strip().split()]
-    # print(f"{splitted_code=}")
     if len(splitted_code) != _INCLUDE_SIZE:
         msg = f">>>ERROR: improper header line: {code}"
         raise ValueError(msg)
@@ -177,7 +180,7 @@ def get_classmembers_public(code: str) -> str | None:
     return rest
 
 
-def get_class_instance(code: str) -> tuple[CPPClass, str | None]:
+def get_class_instance(code: str, log: ILogger) -> tuple[CPPClass, str | None]:
     _, name, rest = code.split(None, 2)
     name = name.split(":")[0]
     content = get_context(rest, Braces.curly)
@@ -188,7 +191,7 @@ def get_class_instance(code: str) -> tuple[CPPClass, str | None]:
     _, context, tail = content
     context = get_classmembers_public(context)
     while context:
-        members, context = get_item_from_code(context, name, nested=True)
+        members, context = get_item_from_code(context, log, name, nested=True)
         if isinstance(members, CPPVar | CPPFunction):
             item.content.append(members)
     tail = check_for_semicolon(tail)
@@ -202,16 +205,16 @@ def get_typedef_instance(code: str) -> tuple[None, str | None]:
     return None, code[first + 1 :].strip()
 
 
-def get_inline_instance(code: str) -> tuple[None, str | None]:
+def get_inline_instance(code: str, log: ILogger) -> tuple[None, str | None]:
     _, rest = code.split(None, 1)
-    _, tail = get_item_from_code(rest)
+    _, tail = get_item_from_code(rest, log)
     return None, tail
 
 
-def get_template_instance(code: str) -> tuple[None, str | None]:
+def get_template_instance(code: str, log: ILogger) -> tuple[None, str | None]:
     match get_context(code, Braces.angle):
         case (_, _, rest):
-            _, tail = get_item_from_code(rest)
+            _, tail = get_item_from_code(rest, log)
             if tail is None:
                 return None, None
             return None, check_for_semicolon(tail)
@@ -220,30 +223,31 @@ def get_template_instance(code: str) -> tuple[None, str | None]:
             raise ValueError(msg)
 
 
-def valid_function_arg(v_type: Ctype) -> bool:
+def valid_function_arg(v_type: Ctype, log: ILogger) -> bool:
     match v_type:
         case c_ptr():
-            valid_function_arg(v_type.kind)
+            valid_function_arg(v_type.kind, log)
         case c_void() | c_int() | c_double() | c_generic():
             pass
         case c_generic_t():
-            print(f">>>>WARNING: template function args not implemented, {v_type=}")
+            log.warn(">>>>WARNING: generic type in function args, ignored")
             return False
         case _:
-            print(f">>>>WARNING: inadmissible type {v_type}, ignored")
+            log.warn(f">>>>WARNING: inadmissible type {v_type}, ignored")
             return False
     return True
 
 
-def function_arg_check(fn: CPPFunction) -> CPPFunction | None:
+def function_arg_check(fn: CPPFunction, log: ILogger) -> CPPFunction | None:
     for v in fn.content:
-        if not valid_function_arg(v.kind):
+        if not valid_function_arg(v.kind, log):
             return None
     return fn
 
 
 def get_item_from_code(
     code: str,
+    log: ILogger,
     class_name: str | None = None,
     *,
     nested: bool = False,
@@ -251,23 +255,23 @@ def get_item_from_code(
     kind = check_next_type(code, class_name)
     match kind:
         case CPPObject.cls:
-            kind, rest = get_class_instance(code)
+            kind, rest = get_class_instance(code, log)
         case CPPObject.var:
             kind, rest = get_variable_instance(code, nested=nested)
         case CPPObject.func:
             member, rest = get_function_instance(code, nested=nested)
-            kind = function_arg_check(member)
+            kind = function_arg_check(member, log)
         case CPPObject.constructor:
             member, rest = get_constructor(code, class_name, nested=nested)
-            kind = function_arg_check(member)
+            kind = function_arg_check(member, log)
         case CPPObject.destructor:
             kind, rest = get_destructor(code)
         case CPPObject.typedef:
             kind, rest = get_typedef_instance(code)
         case CPPObject.template:
-            kind, rest = get_template_instance(code)
+            kind, rest = get_template_instance(code, log)
         case CPPObject.inline:
-            kind, rest = get_inline_instance(code)
+            kind, rest = get_inline_instance(code, log)
         case _:
             print(code)
             raise NotImplementedError

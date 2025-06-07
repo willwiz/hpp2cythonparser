@@ -14,3 +14,7 @@ classifiers = [
 keywords = [
   "cython", "cpp"
 ]
+dependencies = [
+  "arraystubs@git+https://github.com/willwiz/arraystubs",
+  "pytools@git+https://github.com/willwiz/pytools",
+]

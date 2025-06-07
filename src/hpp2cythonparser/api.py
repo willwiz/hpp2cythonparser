@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pprint import pformat
+
 __all__ = [
     "create_cython_header",
 ]
@@ -7,6 +9,8 @@ __all__ = [
 import dataclasses as dc
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from pytools.logging import NULL_LOGGER, ILogger
 
 from .internals import print_headers as hp
 from .internals.core import (
@@ -44,14 +48,13 @@ def get_input_info(
     return InputInfo(hpp_file, cpp_file, cython_file, cython_folder)
 
 
-def parse_cppheader_code(code: str) -> list[CPPVar | CPPFunction | CPPClass]:
+def parse_cppheader_code(code: str, log: ILogger) -> list[CPPVar | CPPFunction | CPPClass]:
     rest = code
     content: list[CPPVar | CPPFunction | CPPClass] = []
     while rest:
-        item, rest = get_item_from_code(rest)
+        item, rest = get_item_from_code(rest, log)
         if item is not None:
             content.append(item)
-        # print(f"{content=}")
     return content
 
 
@@ -86,14 +89,16 @@ def create_cython_header(
     file_name: Path | str,
     cpp_home: Path | str | None = None,
     cython_home: Path | str | None = None,
+    log: ILogger = NULL_LOGGER,
     *,
     show_content: bool = True,
 ) -> None:
     inp = get_input_info(file_name, cpp_home, cython_home)
-    print(f"{inp.hpp_file=}")
-    print(f"{inp.cpp_file=}")
-    print(f"{inp.cython_file=}")
-    print(f"{inp.cython_folder=}")
+    log.info(
+        f"Processing header {inp.hpp_file} with source file",
+        f"  {inp.cpp_file}",
+        f"  the cython header will be saved to {inp.cython_file}",
+    )
     includes_cpp: list[str] = (
         find_includes_from_file(inp.cpp_file, inp.hpp_file.name, inp.cython_folder)
         if inp.cpp_file.is_file()
@@ -109,8 +114,15 @@ def create_cython_header(
     namespace, code = get_namespace_from_code(
         remove_comment(filterline(read_cppfile(inp.hpp_file), "#include")),
     )
-    content = parse_cppheader_code(code)
-    print(f"{includes=}")
-    print(f"{namespace=}")
-    print([s.name for s in content], "\n")
+    content = parse_cppheader_code(code, log)
+    log.info(f"The header name is {namespace}")
+    log.info(
+        f"Includes found: {len(includes)} items, ",
+        pformat(includes),
+    )
+    log.info(
+        f"Content found: {len(content)} items, ",
+        pformat([s.name for s in content]),
+        "\n",
+    )
     export_cython_header(inp, includes, namespace, content, show_content=show_content)
