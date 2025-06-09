@@ -34,6 +34,7 @@ class InputInfo:
 
 def get_input_info(
     file_name: Path | str,
+    log: ILogger,
     cpp_home: Path | str | None = None,
     cython_home: Path | str | None = None,
 ) -> InputInfo:
@@ -45,6 +46,12 @@ def get_input_info(
     )
     cpp_file = hpp_file.with_suffix(".cpp")
     cython_file = cython_folder / hpp_file.with_suffix(".pxd").name
+    log.info(
+        f"Processing header {hpp_file} with source file",
+        f"  hpp name is {hpp_file.with_suffix('.pxd').name}",
+        f"  {cpp_file}",
+        f"  the cython header will be saved to {cython_file}",
+    )
     return InputInfo(hpp_file, cpp_file, cython_file, cython_folder)
 
 
@@ -93,12 +100,8 @@ def create_cython_header(
     *,
     show_content: bool = True,
 ) -> None:
-    inp = get_input_info(file_name, cpp_home, cython_home)
-    log.info(
-        f"Processing header {inp.hpp_file} with source file",
-        f"  {inp.cpp_file}",
-        f"  the cython header will be saved to {inp.cython_file}",
-    )
+    inp = get_input_info(file_name, log, cpp_home, cython_home)
+
     includes_cpp: list[str] = (
         find_includes_from_file(inp.cpp_file, inp.hpp_file.name, inp.cython_folder)
         if inp.cpp_file.is_file()
