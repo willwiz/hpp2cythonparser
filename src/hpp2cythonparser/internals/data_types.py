@@ -26,6 +26,7 @@ from .c_types import (
     c_generic_t,
     c_int,
     c_ptr,
+    c_struct,
     c_void,
 )
 from .tools import Braces, get_context
@@ -162,6 +163,8 @@ def c_unkown_split(code: str) -> tuple[Ctype, str]:
             base_type = c_int()
         case "double":
             base_type = c_double()
+        case "struct":
+            base_type = c_struct()
         case s:
             base_type = c_generic(s)
     for _ in range(len(extras) - 1):

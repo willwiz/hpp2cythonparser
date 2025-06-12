@@ -9,6 +9,7 @@ __all__ = [
     "c_generic_t",
     "c_int",
     "c_ptr",
+    "c_struct",
     "c_void",
 ]
 import abc
@@ -47,6 +48,14 @@ class c_int(Ctype):
 @dc.dataclass(slots=True)
 class c_double(Ctype):
     val: Final[str] = "double"
+
+    def __str__(self) -> str:
+        return self.val
+
+
+@dc.dataclass(slots=True)
+class c_struct(Ctype):
+    val: Final[str] = "struct"
 
     def __str__(self) -> str:
         return self.val

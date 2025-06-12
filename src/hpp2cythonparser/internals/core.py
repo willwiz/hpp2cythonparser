@@ -13,6 +13,7 @@ from .c_types import (
     c_generic_t,
     c_int,
     c_ptr,
+    c_struct,
     c_void,
 )
 from .data_types import (
@@ -76,9 +77,10 @@ def get_namespace_from_code(code: str) -> tuple[str | None, str]:
     return None, raw_code
 
 
-def get_variable_instance(code: str, *, nested: bool = False) -> tuple[CPPVar, str | None]:
+def get_variable_instance(code: str, *, nested: bool = False) -> tuple[CPPVar | None, str | None]:
     kind, rest = get_variable_type(code)
     vs, rest = [s.strip() for s in rest.split(";", 1)]
+    rest = check_for_semicolon(rest)
     vs = [v.strip() for v in vs.split(",")]
     array_depth = [v.count("]") for v in vs]
     if array_depth.count(array_depth[0]) != len(array_depth):
@@ -88,10 +90,18 @@ def get_variable_instance(code: str, *, nested: bool = False) -> tuple[CPPVar, s
         kind = c_ptr(kind, f"[{','.join([':' for _ in range(array_depth[0])])}]")
     v_list = [v.split("=")[0] for v in vs]
     v_list = [v.split("[")[0] for v in v_list]
-    rest = check_for_semicolon(rest)
-    if rest:
-        return CPPVar(kind, ", ".join(v_list), nested), rest
-    return CPPVar(kind, ", ".join(v_list), nested), None
+    match kind:
+        case c_generic_t():
+            var = None
+        case c_generic():
+            var = None
+        case c_struct():
+            var = None
+        case c_ptr(c_generic_t() | c_generic() | c_struct()):
+            var = None
+        case _:
+            var = CPPVar(kind, ", ".join(v_list), nested)
+    return var, rest if rest else None
 
 
 def format_function_argvar(code: str, *, subelem: bool) -> CPPVar:
@@ -229,6 +239,9 @@ def valid_function_arg(v_type: Ctype, log: ILogger) -> bool:
             valid_function_arg(v_type.kind, log)
         case c_void() | c_int() | c_double() | c_generic():
             pass
+        case c_struct():
+            log.warn(">>>>WARNING: struct type in function args, ignored")
+            return False
         case c_generic_t():
             log.warn(">>>>WARNING: generic type in function args, ignored")
             return False

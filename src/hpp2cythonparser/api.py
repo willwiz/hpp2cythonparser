@@ -125,7 +125,7 @@ def create_cython_header(
     )
     log.info(
         f"Content found: {len(content)} items, ",
-        pformat([s.name for s in content]),
+        pformat(content),
         "\n",
     )
     export_cython_header(inp, includes, namespace, content, show_content=show_content)
