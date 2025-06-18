@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import overload
 
-from pytools.logging import ILogger
+from pytools.logging.trait import ILogger
 
 @overload
 def create_cython_header(

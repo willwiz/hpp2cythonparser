@@ -32,7 +32,7 @@ from .tools import (
 )
 
 if TYPE_CHECKING:
-    from pytools.logging import ILogger
+    from pytools.logging.trait import ILogger
 
 _INCLUDE_SIZE = 2
 

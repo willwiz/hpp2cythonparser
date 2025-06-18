@@ -10,7 +10,7 @@ import dataclasses as dc
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pytools.logging import NULL_LOGGER, ILogger
+from pytools.logging.api import NULL_LOGGER
 
 from .internals import print_headers as hp
 from .internals.core import (
@@ -21,6 +21,8 @@ from .internals.core import (
 from .internals.tools import filterline, read_cppfile, remove_comment
 
 if TYPE_CHECKING:
+    from pytools.logging.trait import ILogger
+
     from .internals.data_types import CPPClass, CPPFunction, CPPVar
 
 
