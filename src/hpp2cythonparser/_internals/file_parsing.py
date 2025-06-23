@@ -1,12 +1,27 @@
 from __future__ import annotations
 
+__all__ = [
+    "function_arg_check",
+    "get_class_instance",
+    "get_classmembers_public",
+    "get_constructor",
+    "get_destructor",
+    "get_function_instance",
+    "get_inline_instance",
+    "get_item_from_code",
+    "get_template_instance",
+    "get_typedef_instance",
+    "get_variable_instance",
+    "parse_include",
+    "split_function_arguments",
+    "valid_function_arg",
+]
 import os
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .c_types import (
-    Ctype,
+from hpp2cythonparser._c_types import (
     c_constructor,
     c_double,
     c_generic,
@@ -16,20 +31,11 @@ from .c_types import (
     c_struct,
     c_void,
 )
-from .data_types import (
-    CPPClass,
-    CPPFunction,
-    CPPObject,
-    CPPVar,
-    check_next_type,
-    get_variable_type,
-)
-from .tools import (
-    Braces,
-    check_for_semicolon,
-    get_context,
-    read_cppfile,
-)
+from hpp2cythonparser.struct import CPPClass, CPPFunction, CPPVar
+from hpp2cythonparser.trait import CPPObject, Ctype
+
+from .ctype_parsing import check_next_type, get_variable_type
+from .tools import Braces, check_for_semicolon, get_context
 
 if TYPE_CHECKING:
     from pytools.logging.trait import ILogger
@@ -49,32 +55,6 @@ def parse_include(code: str, exclude: str, folder: Path | str) -> str | None:
     if header.name == exclude:
         return None
     return ".".join(Path(os.path.normpath(str((folder / header).with_suffix("")))).parts)
-
-
-def find_includes_from_file(name: Path | str, header: str, folder: Path | str) -> list[str]:
-    code = read_cppfile(name)
-    header_lines = [
-        parse_include(line, header, folder) for line in code if line.startswith("#include")
-    ]
-    return [line for line in header_lines if line]
-
-
-def get_namespace_from_code(code: str) -> tuple[str | None, str]:
-    raw_code = code
-    n_namespace = raw_code.count("namespace")
-    if n_namespace > 1:
-        msg = f">>>ERROR: found {n_namespace} namespaces in code, expected 1"
-        raise ValueError(msg)
-    if n_namespace == 1:
-        start = raw_code.find("namespace")
-        namespace, rest = raw_code[start + 9 :].split(None, 1)
-        match get_context(rest, Braces.curly):
-            case str(), str(raw), str():
-                return namespace, raw.strip()
-            case None:
-                msg = f">>>ERROR: cannot find context for namespace {namespace}"
-                raise ValueError(msg)
-    return None, raw_code
 
 
 def get_variable_instance(code: str, *, nested: bool = False) -> tuple[CPPVar | None, str | None]:
@@ -286,6 +266,6 @@ def get_item_from_code(
         case CPPObject.inline:
             kind, rest = get_inline_instance(code, log)
         case _:
-            print(code)
+            log.error(code)
             raise NotImplementedError
     return kind, rest

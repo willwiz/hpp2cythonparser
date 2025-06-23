@@ -1,3 +1,4 @@
+__all__ = ["create_cython_header"]
 from pathlib import Path
 from typing import overload
 

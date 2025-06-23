@@ -2,25 +2,14 @@
 from __future__ import annotations
 
 __all__ = [
-    "CPPClass",
-    "CPPFunction",
-    "CPPFunctionTypes",
-    "CPPObject",
-    "CPPVar",
     "check_next_type",
     "cstrip_prefix",
     "get_variable_type",
 ]
 
-import dataclasses as dc
-import enum
-import textwrap
 from typing import TYPE_CHECKING, Literal
 
-from .c_types import (
-    Ctype,
-    CtypeExtended,
-    c_constructor,
+from hpp2cythonparser._c_types import (
     c_double,
     c_generic,
     c_generic_t,
@@ -29,81 +18,12 @@ from .c_types import (
     c_struct,
     c_void,
 )
+from hpp2cythonparser.trait import CPPObject, Ctype
+
 from .tools import Braces, get_context
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-
-
-class CPPObject(enum.Enum):
-    var = 0
-    func = 1
-    cls = 2
-    template = 3
-    inline = 4
-    typedef = 5
-    constructor = 6
-    destructor = 7
-    unknown = 10
-
-
-class CPPFunctionTypes(enum.StrEnum):
-    void = "void"
-    int = "int"
-    double = "double"
-    constructor = ""
-    destructor = "~"
-
-
-@dc.dataclass(slots=True)
-class CPPVar:
-    kind: Ctype
-    name: str
-    _subelem: bool = False
-
-    def __str__(self) -> str:
-        if self._subelem:
-            return f"  {self.kind} {self.name}"
-        return f"  cdef {self.kind} {self.name}"
-
-
-@dc.dataclass(slots=True)
-class CPPFunction:
-    kind: CtypeExtended
-    name: str
-    content: list[CPPVar] = dc.field(default_factory=list[CPPVar])
-    _subelem: bool = False
-
-    def __str__(self) -> str:
-        wrapper = textwrap.TextWrapper(
-            width=80,
-            initial_indent="  ",
-            subsequent_indent="    ",
-            break_long_words=False,
-        )
-        hacky = [str(s).strip().replace(" ", "$") for s in self.content]
-        string = f"{self.kind} {self.name}({', '.join(hacky)})".strip()
-        if not self._subelem:
-            string = "cdef " + string
-        if isinstance(self.kind, c_constructor):
-            string = string + "$except$+"
-        return "\n".join(wrapper.wrap(text=string)).replace("$", " ")
-
-
-@dc.dataclass(slots=True)
-class CPPClass:
-    name: str
-    content: list[CPPFunction | CPPVar] = dc.field(default_factory=list[CPPFunction | CPPVar])
-
-    def __str__(self) -> str:
-        head = f"  cdef cppclass {self.name}:"
-        string = ""
-        if self.content:
-            for el in self.content:
-                string = string + "\n" + str(el)
-        else:
-            string = string + "\n  pass"
-        return head + string.replace("\n", "\n  ")
 
 
 def check_next_type(code: str, class_name: str | None = None) -> CPPObject:

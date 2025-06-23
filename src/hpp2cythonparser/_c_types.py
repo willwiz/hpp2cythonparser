@@ -1,7 +1,5 @@
 # ruff: noqa: N801
 __all__ = [
-    "Ctype",
-    "CtypeExtended",
     "c_constructor",
     "c_destructor",
     "c_double",
@@ -12,21 +10,10 @@ __all__ = [
     "c_struct",
     "c_void",
 ]
-import abc
 import dataclasses as dc
 from typing import Final
 
-
-class CtypeExtended(abc.ABC):
-    @abc.abstractmethod
-    def __str__(self) -> str:
-        """Convert the C type to a string representation."""
-
-
-class Ctype(CtypeExtended):
-    @abc.abstractmethod
-    def __str__(self) -> str:
-        """Convert the C type to a string representation."""
+from .trait import Ctype, CtypeExtended
 
 
 @dc.dataclass(slots=True)
